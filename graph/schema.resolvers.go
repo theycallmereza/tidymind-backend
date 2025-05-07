@@ -6,25 +6,15 @@ package graph
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
-
 	"github.com/theycallmereza/tidymind-backend/graph/model"
 )
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, username string, email string) (*model.User, error) {
-	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
-	user := &model.User{
-		ID:       fmt.Sprintf("U%d", randNumber.Int64()),
-		Username: username,
-		Email:    email,
-	}
-
-	// Add the new user to the list of users
+	id := fmt.Sprintf("U%d", len(r.users)+1)
+	user := &model.User{ID: id, Username: username, Email: email}
 	r.users = append(r.users, user)
-
 	return user, nil
 }
 
@@ -46,11 +36,12 @@ func (r *mutationResolver) CreateTask(ctx context.Context, title string, descrip
 		return nil, err
 	}
 
-	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
+	id := fmt.Sprintf("T%d", len(r.tasks)+1)
 	task := &model.Task{
+		ID:          id,
 		Title:       title,
 		Description: description,
-		ID:          fmt.Sprintf("T%d", randNumber.Int64()),
+		Status:      "pending",
 		User:        user,
 	}
 	r.tasks = append(r.tasks, task)
