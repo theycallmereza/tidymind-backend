@@ -6,7 +6,9 @@ package graph
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 
 	"github.com/theycallmereza/tidymind-backend/graph/model"
 )
@@ -18,7 +20,15 @@ func (r *mutationResolver) CreateUser(ctx context.Context, username string, emai
 
 // CreateTask is the resolver for the createTask field.
 func (r *mutationResolver) CreateTask(ctx context.Context, title string, description *string, userID string) (*model.Task, error) {
-	panic(fmt.Errorf("not implemented: CreateTask - createTask"))
+	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
+	task := &model.Task{
+		Title:       title,
+		Description: description,
+		ID:          fmt.Sprintf("T%d", randNumber.Int64()),
+		User:        &model.User{ID: userID, Username: "user" + userID, Email: "user" + userID + "@gmail.com"},
+	}
+	r.tasks = append(r.tasks, task)
+	return task, nil
 }
 
 // Users is the resolver for the users field.
@@ -28,7 +38,7 @@ func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
 
 // Tasks is the resolver for the tasks field.
 func (r *queryResolver) Tasks(ctx context.Context) ([]*model.Task, error) {
-	panic(fmt.Errorf("not implemented: Tasks - tasks"))
+	return r.tasks, nil
 }
 
 // Mutation returns MutationResolver implementation.
@@ -39,18 +49,3 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: CreateTodo - createTodo"))
-}
-func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	panic(fmt.Errorf("not implemented: Todos - todos"))
-}
-*/
