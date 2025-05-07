@@ -15,17 +15,43 @@ import (
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, username string, email string) (*model.User, error) {
-	panic(fmt.Errorf("not implemented: CreateUser - createUser"))
+	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
+	user := &model.User{
+		ID:       fmt.Sprintf("U%d", randNumber.Int64()),
+		Username: username,
+		Email:    email,
+	}
+
+	// Add the new user to the list of users
+	r.users = append(r.users, user)
+
+	return user, nil
+}
+
+// findUserByID searches for a user in the resolver's user slice by their ID.
+// It returns the user if found, or an error if no user with the given ID exists.
+func (r *mutationResolver) findUserByID(userID string) (*model.User, error) {
+	for _, u := range r.users {
+		if u.ID == userID {
+			return u, nil
+		}
+	}
+	return nil, fmt.Errorf("user with ID %s not found", userID)
 }
 
 // CreateTask is the resolver for the createTask field.
 func (r *mutationResolver) CreateTask(ctx context.Context, title string, description *string, userID string) (*model.Task, error) {
+	user, err := r.findUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
 	randNumber, _ := rand.Int(rand.Reader, big.NewInt(100))
 	task := &model.Task{
 		Title:       title,
 		Description: description,
 		ID:          fmt.Sprintf("T%d", randNumber.Int64()),
-		User:        &model.User{ID: userID, Username: "user" + userID, Email: "user" + userID + "@gmail.com"},
+		User:        user,
 	}
 	r.tasks = append(r.tasks, task)
 	return task, nil
@@ -33,7 +59,7 @@ func (r *mutationResolver) CreateTask(ctx context.Context, title string, descrip
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
+	return r.users, nil
 }
 
 // Tasks is the resolver for the tasks field.
