@@ -6,56 +6,110 @@ package graph
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/google/uuid"
+	"github.com/theycallmereza/tidymind-backend/internal/database"
+
 	"github.com/theycallmereza/tidymind-backend/graph/model"
 )
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, username string, email string) (*model.User, error) {
-	id := fmt.Sprintf("U%d", len(r.users)+1)
-	user := &model.User{ID: id, Username: username, Email: email}
-	r.users = append(r.users, user)
-	return user, nil
-}
-
-// findUserByID searches for a user in the resolver's user slice by their ID.
-// It returns the user if found, or an error if no user with the given ID exists.
-func (r *mutationResolver) findUserByID(userID string) (*model.User, error) {
-	for _, u := range r.users {
-		if u.ID == userID {
-			return u, nil
-		}
+	newUser := database.User{
+		ID:       uuid.New(),
+		Username: username,
+		Email:    email,
 	}
-	return nil, fmt.Errorf("user with ID %s not found", userID)
+	if err := database.DB.Create(&newUser).Error; err != nil {
+		return nil, err
+	}
+
+	return &model.User{
+		ID:       newUser.ID.String(),
+		Username: newUser.Username,
+		Email:    newUser.Email,
+	}, nil
 }
 
 // CreateTask is the resolver for the createTask field.
 func (r *mutationResolver) CreateTask(ctx context.Context, title string, description *string, userID string) (*model.Task, error) {
-	user, err := r.findUserByID(userID)
+	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, err
 	}
 
-	id := fmt.Sprintf("T%d", len(r.tasks)+1)
-	task := &model.Task{
-		ID:          id,
+	newTask := database.Task{
+		ID:          uuid.New(),
 		Title:       title,
 		Description: description,
-		Status:      "pending",
-		User:        user,
+		Status:      "PENDING",
+		UserID:      uid,
 	}
-	r.tasks = append(r.tasks, task)
-	return task, nil
+
+	if err := database.DB.Create(&newTask).Error; err != nil {
+		return nil, err
+	}
+
+	// Preload the user to access Username and Email
+	if err := database.DB.Preload("User").First(&newTask, "id = ?", newTask.ID).Error; err != nil {
+		return nil, err
+	}
+
+	return &model.Task{
+		ID:          newTask.ID.String(),
+		Title:       newTask.Title,
+		Description: newTask.Description,
+		Status:      newTask.Status,
+		User: &model.User{
+			ID:       newTask.User.ID.String(),
+			Username: newTask.User.Username,
+			Email:    newTask.User.Email,
+		},
+	}, nil
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
-	return r.users, nil
+	var users []database.User
+	if err := database.DB.Preload("Tasks").Find(&users).Error; err != nil {
+		return nil, err
+	}
+
+	var result []*model.User
+	for _, u := range users {
+		user := &model.User{
+			ID:       u.ID.String(),
+			Username: u.Username,
+			Email:    u.Email,
+		}
+		result = append(result, user)
+	}
+	return result, nil
 }
 
 // Tasks is the resolver for the tasks field.
 func (r *queryResolver) Tasks(ctx context.Context) ([]*model.Task, error) {
-	return r.tasks, nil
+	var tasks []database.Task
+	if err := database.DB.Preload("User").Find(&tasks).Error; err != nil {
+		return nil, err
+	}
+
+	var result []*model.Task
+	for _, t := range tasks {
+		task := &model.Task{
+			ID:          t.ID.String(),
+			Title:       t.Title,
+			Description: t.Description,
+			Status:      t.Status,
+			User: &model.User{
+				ID:       t.User.ID.String(),
+				Username: t.User.Username,
+				Email:    t.User.Email,
+			},
+		}
+		result = append(result, task)
+	}
+	return result, nil
 }
 
 // Mutation returns MutationResolver implementation.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/theycallmereza/tidymind-backend/internal/database"
 	"log"
 	"net/http"
 	"os"
@@ -17,6 +18,9 @@ import (
 const defaultPort = "8080"
 
 func main() {
+	database.Init()
+	log.Println("Connected to DB!")
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
